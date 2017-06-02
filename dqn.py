@@ -33,7 +33,7 @@ class DQN(object):
         with tf.name_scope("embedding"):
             self.goal_w = tf.Variable(tf.random_uniform([goal_size, 2],
                                                         name="goal_w"))
-            self.act_w = tf.Variable(tf.random_uniform([act_size, 4],
+            self.act_w = tf.Variable(tf.random_uniform([act_size, 2],
                                                        name="act_w"))
             self.song_w = tf.Variable(tf.random_uniform([song_size, 10],
                                                         name="song_w"))
@@ -57,7 +57,7 @@ class DQN(object):
             self.st = tf.concat([self.st_goal, self.st_song,
                                  self.st_singer, self.st_album], 1)  # 32 dim
             self.at = tf.concat([self.at_act, self.at_song,
-                                 self.at_singer, self.at_album], 1)  # 34 dim
+                                 self.at_singer, self.at_album], 1)  # 32 dim
 
         #  model architecture
         with tf.name_scope("MLP"):
@@ -66,7 +66,7 @@ class DQN(object):
             b0_st = tf.Variable(tf.constant(0.1, shape=[64]), name="b0_st")
             h0_st = tf.nn.relu(tf.nn.xw_plus_b(self.st, w0_st, b0_st))
             w0_at = tf.Variable(
-                tf.truncated_normal([34, 64], stddev=0.1), name="w0_at")
+                tf.truncated_normal([32, 64], stddev=0.1), name="w0_at")
             b0_at = tf.Variable(tf.constant(0.1, shape=[64]), name="b0_at")
             h0_at = tf.nn.relu(tf.nn.xw_plus_b(self.at, w0_at, b0_at))
             h0 = tf.concat([h0_st, h0_at], 1)
