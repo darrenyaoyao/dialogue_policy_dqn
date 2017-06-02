@@ -44,14 +44,14 @@ def train():
             sess.run(tf.global_variables_initializer())
 
             # predict the max Q of st1
-            def max_q(at_batch, st1_batch, action_size=9):
+            def max_q(st_batch, st1_batch, action_size=9):
                 tmp = []
                 all_action = []
                 all_st1 = []
                 # generate all possible action
-                for a in at_batch:
+                for s in st_batch:
                     for i in range(8):
-                        a0 = list(deepcopy(a))
+                        a0 = list(deepcopy(s))
                         idx_1 = i % 2
                         idx_2 = (i / 2) % 2
                         idx_3 = (i / 4) % 2
@@ -165,7 +165,7 @@ def train():
                 st1_batch = [d[2] for d in train_batch]
                 rt_batch = [d[3] for d in train_batch]
                 terminal_batch = [d[4] for d in train_batch]
-                target_q_batch = max_q(at_batch, st1_batch)
+                target_q_batch = max_q(st_batch, st1_batch)
                 train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch)
                 current_step = tf.train.global_step(sess, global_step)
