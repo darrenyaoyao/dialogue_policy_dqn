@@ -82,4 +82,9 @@ if __name__ == "__main__":
     print("len = ", len(loader.dataset))
     loader.Split(0.1)
     print("get the bactch size = ",len(loader.get_train_batch(64)))
-                
+    def check(data):
+        for d in data:
+            if type(d[0]) != tuple or type(d[1]) != tuple:
+                print("error!")
+
+
