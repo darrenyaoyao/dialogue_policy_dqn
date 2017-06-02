@@ -103,7 +103,6 @@ def train():
 
             def train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch):
-                print(rt_batch)
                 st_goal_batch = [s[0] for s in st_batch]
                 st_song_batch = [s[1] for s in st_batch]
                 st_singer_batch = [s[2] for s in st_batch]
