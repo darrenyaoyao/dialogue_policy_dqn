@@ -71,11 +71,11 @@ class DQN(object):
                 tf.truncated_normal([128, 1], stddev=0.1), name="w1")
             b1 = tf.Variable(tf.constant(0.1, shape=[1]), name="b1")
             h1 = tf.nn.relu(tf.nn.xw_plus_b(h0, w1, b1))
-            self.h1 = tf.reshape(h1, [-1], name="h1")
+            self.q = tf.reshape(h1, [-1], name="q")
 
         with tf.name_scope("target"):
             self.target = self.reward + \
                 self.GAMMA * tf.multiply(self.terminal, self.target_q)
 
         with tf.name_scope("loss"):
-            self.loss = tf.metrics.mean_squared_error(self.target, self.h1)
+            self.loss = tf.metrics.mean_squared_error(self.target, self.q)
