@@ -12,7 +12,7 @@ Usage:
        loader = Dataloader(filepath)
     2. Split the data to training set and validation set, specify the proportion of validate to whole set
        loader.split(0.2)
-    3. get training batch 
+    3. get training batch
        loader.get_train_batch(64)
        return list of (st, at, st1, rt, terminal)
 
@@ -26,6 +26,11 @@ class Dataloader():
     def __init__(self, filename='training_data_encode.npy'):
         self.data = np.load(filename)
         self.mapping = pickle.load(open('mapping.p', 'rb'))
+        self.goal_size = len(self.mapping['goal'])
+        self.action_size = len(self.mapping['action'])
+        self.song_size = len(self.mapping['song'])
+        self.singer_size = len(self.mapping['singer'])
+        self.album_size = len(self.mapping['album'])
         self.dataset = []
         self.val_set = []
         self.train_set = []
@@ -42,8 +47,8 @@ class Dataloader():
         return self.val_set
 
     def split(self, ratio):
-        random.shuffle(self.dataset)       
-        #print("math.floor = ", math.floor(ratio*len(self.dataset))) 
+        random.shuffle(self.dataset)
+        #print("math.floor = ", math.floor(ratio*len(self.dataset)))
         self.val_set = self.dataset[:int(math.floor(ratio*len(self.dataset)))]
         self.train_set = self.dataset[int(math.floor(ratio*len(self.dataset))):]
 
@@ -67,8 +72,9 @@ class Dataloader():
                 state = self.getState(turn['Bot_state'])
                 action = self.getAction(turn['Bot_action'])
                 if index == len(conversations)-1:
+                    print(reward)
                     re = reward
-                    next_state = 0
+                    next_state = (0, 0, 0, 0)
                     terminal = 1
                 else:
                     re = 0

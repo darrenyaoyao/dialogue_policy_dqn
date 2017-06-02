@@ -27,7 +27,11 @@ def train():
             log_device_placement=True
         ))
         with sess.as_default():
-            dqn = DQN()
+            dqn = DQN(goal_size=dataloader.goal_size,
+                      act_size=dataloader.action_size,
+                      song_size=dataloader.song_size,
+                      singer_size=dataloader.singer_size,
+                      album_size=dataloader.album_size)
 
             # Define Training Procedure
             global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -45,7 +49,7 @@ def train():
                 all_st1 = []
                 for a in at_batch:
                     for i in range(8):
-                        a0 = deepcopy(a)
+                        a0 = list(deepcopy(a))
                         idx_1 = i % 2
                         idx_2 = (i / 2) % 2
                         idx_3 = (i / 4) % 2
@@ -55,12 +59,12 @@ def train():
                             a0[2] = 0
                         if idx_3 == 0:
                             a0[3] = 0
-                        tmp.append(a0)
+                        tmp.append(tuple(a0))
                 for a in tmp:
                     for i in range(action_size):
-                        a0 = deepcopy(a)
-                        a[0] = i
-                        all_action.append(a)
+                        a0 = list(deepcopy(a))
+                        a0[0] = i
+                        all_action.append(tuple(a0))
                 for s in st1_batch:
                     for i in range(8*action_size):
                         all_st1.append(s)
@@ -83,7 +87,7 @@ def train():
                     dqn.action_album: at_album_batch
                 }
                 q = sess.run(
-                    [dqn.q],
+                    dqn.q,
                     feed_dict
                 )
                 max_q = []
@@ -97,6 +101,7 @@ def train():
 
             def train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch):
+                print(rt_batch)
                 st_goal_batch = [s[0] for s in st_batch]
                 st_song_batch = [s[1] for s in st_batch]
                 st_singer_batch = [s[2] for s in st_batch]
@@ -152,8 +157,12 @@ def train():
                 print("{}: step {}, loss {:g}".format(time_str, step, loss))
 
             while True:
-                st_batch, at_batch, st1_batch, rt_batch, terminal_batch \
-                    = dataloader.get_train_batch(FLAGS.batch_size)
+                train_batch = dataloader.get_train_batch(FLAGS.batch_size)
+                st_batch = [d[0] for d in train_batch]
+                at_batch = [d[1] for d in train_batch]
+                st1_batch = [d[2] for d in train_batch]
+                rt_batch = [d[3] for d in train_batch]
+                terminal_batch = [d[4] for d in train_batch]
                 target_q_batch = max_q(at_batch, st1_batch)
                 train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch)

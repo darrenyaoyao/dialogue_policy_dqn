@@ -6,21 +6,21 @@ class DQN(object):
 
     def __init__(self, goal_size=10, act_size=10, song_size=10,
                  singer_size=10, album_size=10):
-        self.state_goal = tf.placeholder(tf.float32,
+        self.state_goal = tf.placeholder(tf.int32,
                                          [None], name="state_goal")
-        self.state_song = tf.placeholder(tf.float32,
+        self.state_song = tf.placeholder(tf.int32,
                                          [None], name="state_song")
-        self.state_singer = tf.placeholder(tf.float32,
+        self.state_singer = tf.placeholder(tf.int32,
                                            [None], name="state_singer")
-        self.state_album = tf.placeholder(tf.float32,
+        self.state_album = tf.placeholder(tf.int32,
                                           [None], name="state_album")
-        self.action_act = tf.placeholder(tf.float32,
+        self.action_act = tf.placeholder(tf.int32,
                                          [None], name="action_act")
-        self.action_song = tf.placeholder(tf.float32,
+        self.action_song = tf.placeholder(tf.int32,
                                           [None], name="action_song")
-        self.action_singer = tf.placeholder(tf.float32,
+        self.action_singer = tf.placeholder(tf.int32,
                                             [None], name="action_singer")
-        self.action_album = tf.placeholder(tf.float32,
+        self.action_album = tf.placeholder(tf.int32,
                                            [None], name="action_album")
         self.target_q = tf.placeholder(tf.float32,
                                        [None], name="target_q")
@@ -33,7 +33,7 @@ class DQN(object):
             self.goal_w = tf.Variable(tf.random_uniform([goal_size, 2],
                                                         name="goal_w"))
             self.act_w = tf.Variable(tf.random_uniform([act_size, 4],
-                                                       namd="act_w"))
+                                                       name="act_w"))
             self.song_w = tf.Variable(tf.random_uniform([song_size, 10],
                                                         name="song_w"))
             self.singer_w = tf.Variable(tf.random_uniform([singer_size, 10],
@@ -54,9 +54,9 @@ class DQN(object):
             self.at_album = tf.nn.embedding_lookup(self.album_w,
                                                    self.action_album)
             self.st = tf.concat([self.st_goal, self.st_song,
-                                 self.st_singer, self.st_album])  # 32 dim
+                                 self.st_singer, self.st_album], 1)  # 32 dim
             self.at = tf.concat([self.at_act, self.at_song,
-                                 self.at_singer, self.at_album])  # 34 dim
+                                 self.at_singer, self.at_album], 1)  # 34 dim
 
         with tf.name_scope("MLP"):
             w0_st = tf.Variable(
@@ -66,8 +66,8 @@ class DQN(object):
             w0_at = tf.Variable(
                 tf.truncated_normal([34, 64], stddev=0.1), name="w0_at")
             b0_at = tf.Variable(tf.constant(0.1, shape=[64]), name="b0_at")
-            h0_at = tf.nn.relu(tf.nn.xw_plus_b(self.st, w0_at, b0_at))
-            h0 = tf.concat([h0_st, h0_at])
+            h0_at = tf.nn.relu(tf.nn.xw_plus_b(self.at, w0_at, b0_at))
+            h0 = tf.concat([h0_st, h0_at], 1)
             w1 = tf.Variable(
                 tf.truncated_normal([128, 1], stddev=0.1), name="w1")
             b1 = tf.Variable(tf.constant(0.1, shape=[1]), name="b1")
@@ -79,4 +79,4 @@ class DQN(object):
                 self.GAMMA * tf.multiply(self.terminal, self.target_q)
 
         with tf.name_scope("loss"):
-            self.loss = tf.metrics.mean_squared_error(self.target, self.q)
+            self.loss = tf.reduce_sum(tf.pow(self.target-self.q, 2))
