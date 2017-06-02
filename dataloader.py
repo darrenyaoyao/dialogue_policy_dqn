@@ -11,26 +11,27 @@ Usage:
     1. first initialize the class ,specify the data set filepath
        loader = Dataloader(filepath)
     2. Split the data to training set and validation set, specify the proportion of validate to whole set
-       loader.Split(0.2)
+       loader.split(0.2)
     3. get training batch 
        loader.get_train_batch(64)
        return list of (st, at, st1, rt, terminal)
 
 '''
-import numpy as np 
+import numpy as np
 import pickle, copy
 import random, math
 
+
 class Dataloader():
-    def __init__(self,filename='training_data_encode.npy'):
+    def __init__(self, filename='training_data_encode.npy'):
         self.data = np.load(filename)
-        self.mapping = pickle.load(open('mapping.p','rb'))
+        self.mapping = pickle.load(open('mapping.p', 'rb'))
         self.dataset = []
         self.val_set = []
         self.train_set = []
         self.makeSet()
     #def chunk(self,l,n):
-    
+
     def get_train_batch(self, batch_size):
         batch = []
         for i in range(batch_size):
@@ -40,41 +41,43 @@ class Dataloader():
     def get_val(self):
         return self.val_set
 
-    def Split(self, ratio):
+    def split(self, ratio):
         random.shuffle(self.dataset)       
         #print("math.floor = ", math.floor(ratio*len(self.dataset))) 
         self.val_set = self.dataset[:int(math.floor(ratio*len(self.dataset)))]
         self.train_set = self.dataset[int(math.floor(ratio*len(self.dataset))):]
-        
+
     def getState(self, bot_state):
         state = list(bot_state)
         del state[-1]
         del state[-1]
         return tuple(state)
+
     def getAction(self, bot_action):
         action = list(bot_action)
         del action[-1]
         del action[-1]
         return tuple(action)
+
     def makeSet(self):
         for conversations in self.data:
             reward = copy.copy(conversations[-1])
             del conversations[-1]
             for index, turn in enumerate(conversations):
-                
                 state = self.getState(turn['Bot_state'])
                 action = self.getAction(turn['Bot_action'])
                 if index == len(conversations)-1:
                     re = reward
                     next_state = 0
                     terminal = 1
-                
-                else :
+                else:
                     re = 0
                     next_state = self.getState(conversations[index+1]['Bot_state'])
                     terminal = 0
 
                 self.dataset.append((state, action, next_state, re, terminal))
+
+
 if __name__ == "__main__":
     loader = Dataloader()
     #loader.makeSet()

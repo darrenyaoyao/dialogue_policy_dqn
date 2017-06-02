@@ -4,7 +4,8 @@ import tensorflow as tf
 class DQN(object):
     GAMMA = 0.9
 
-    def __init__(self, goal_size=10, act_size=10, song_size=10, singer_size=10, album_size=10):
+    def __init__(self, goal_size=10, act_size=10, song_size=10,
+                 singer_size=10, album_size=10):
         self.state_goal = tf.placeholder(tf.float32,
                                          [None], name="state_goal")
         self.state_song = tf.placeholder(tf.float32,
