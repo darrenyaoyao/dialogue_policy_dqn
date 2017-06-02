@@ -29,6 +29,7 @@ class DQN(object):
         self.terminal = tf.placeholder(tf.float32,
                                        [None], name="terminal")
 
+        # one hot embedding for each slot and goal, action
         with tf.name_scope("embedding"):
             self.goal_w = tf.Variable(tf.random_uniform([goal_size, 2],
                                                         name="goal_w"))
@@ -58,6 +59,7 @@ class DQN(object):
             self.at = tf.concat([self.at_act, self.at_song,
                                  self.at_singer, self.at_album], 1)  # 34 dim
 
+        #  model architecture
         with tf.name_scope("MLP"):
             w0_st = tf.Variable(
                 tf.truncated_normal([32, 64], stddev=0.1), name="w0_st")
@@ -74,9 +76,11 @@ class DQN(object):
             h1 = tf.nn.relu(tf.nn.xw_plus_b(h0, w1, b1))
             self.q = tf.reshape(h1, [-1], name="q")
 
+        # target reward
         with tf.name_scope("target"):
             self.target = self.reward + \
                 self.GAMMA * tf.multiply(self.terminal, self.target_q)
 
+        # loss function
         with tf.name_scope("loss"):
             self.loss = tf.reduce_sum(tf.pow(self.target-self.q, 2))

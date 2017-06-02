@@ -43,10 +43,12 @@ def train():
             # Initialize all variables
             sess.run(tf.global_variables_initializer())
 
+            # predict the max Q of st1
             def max_q(at_batch, st1_batch, action_size=9):
                 tmp = []
                 all_action = []
                 all_st1 = []
+                # generate all possible action
                 for a in at_batch:
                     for i in range(8):
                         a0 = list(deepcopy(a))
