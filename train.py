@@ -6,18 +6,24 @@ from dqn import DQN
 from tensorflow import flags
 from tensorflow import logging
 from tensorflow import gfile
-
+import os
 flags.DEFINE_integer("evaluate_every", 100,
                      "Number of step for model evaluation.")
 flags.DEFINE_integer("batch_size", 64, "batch size for training")
 
-flags.DEFINE_integer("epoch", 10000, "batch size for training")
+flags.DEFINE_integer("epoch", 1000000, "max epoch")
 
 flags.DEFINE_string("model_dir", "models/", "The directory to save the model files in.")
+flags.DEFINE_string("gpu", "0", "the gpu to use")
+
 
 FLAGS = flags.FLAGS
-
-
+os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpu
+config = tf.ConfigProto(
+            allow_soft_placement=True
+            #log_device_placement=True
+        )
+config.gpu_options.per_process_gpu_memory_fraction = 0.4
 def train():
     dataloader = Dataloader()
     dataloader.split(0.1)
@@ -31,10 +37,7 @@ def train():
     with tf.Graph().as_default():
 
         
-        sess = tf.Session(config=tf.ConfigProto(
-            allow_soft_placement=True
-            #log_device_placement=True
-        ))
+        sess = tf.Session(config=config)
         with sess.as_default():
             # check if a saved model
             # meta_filename = get_meta_filename(False, FLAGS.model_dir)
@@ -72,19 +75,22 @@ def train():
                 st1_batch = [d[2] for d in train_batch]
                 rt_batch = [d[3] for d in train_batch]
                 terminal_batch = [d[4] for d in train_batch]
-                target_q_batch = max_q(st_batch, st1_batch)
+                target_q_batch, _ = max_q(st_batch, st1_batch)
                 train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch)
                 current_step = tf.train.global_step(sess, dqn.global_step)
                 if current_step % FLAGS.evaluate_every == 0:
-                    dev_target_q_batch = max_q(dev_at_batch, dev_st1_batch)
+                    dev_target_q_batch, q_action = max_q(dev_at_batch, dev_st1_batch)
                     dev_step(dev_st_batch, dev_at_batch, dev_target_q_batch,
                              dev_rt_batch, dev_terminal_batch)
-                    
+                    print("validate action {} ".format(q_action) )
                 #saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=2)
                 if current_step % 1000 == 0:
+                    #_, q_action = max_q()
                     saver = dqn.saver
                     saver.save(sess, FLAGS.model_dir+'/test_model', global_step=dqn.global_step)
+
+
 # predict the max Q of st1
 def max_q(st_batch, st1_batch, action_size=9):
     tmp = []
@@ -135,13 +141,15 @@ def max_q(st_batch, st1_batch, action_size=9):
         feed_dict
     )
     max_q = []
+    q_action = 0
     for i in range(0, len(q), 8*action_size):
         q_max = float('-inf')
         for j in range(8*action_size):
             if q[i+j] > q_max:
                 q_max = q[i+j]
+                q_action = all_action[i+j]
         max_q.append(q_max)
-    return max_q
+    return max_q, q_action
 def dev_step(st_batch, at_batch, target_q_batch,
                          rt_batch, terminal_batch):
     st_goal_batch = [s[0] for s in st_batch]
@@ -168,19 +176,22 @@ def dev_step(st_batch, at_batch, target_q_batch,
     step, loss = sess.run(
         [dqn.global_step, dqn.loss],
         feed_dict)
+
     time_str = datetime.datetime.now().isoformat()
     print("{}: step {}, loss {:g}".format(time_str, step, loss))
 
+
 def train_step(st_batch, at_batch, target_q_batch,
                            rt_batch, terminal_batch):
-    st_goal_batch = [s[0] for s in st_batch]
-    st_song_batch = [s[1] for s in st_batch]
-    st_singer_batch = [s[2] for s in st_batch]
-    st_album_batch = [s[3] for s in st_batch]
     at_act_batch = [a[0] for a in at_batch]
     at_song_batch = [a[1] for a in at_batch]
     at_singer_batch = [a[2] for a in at_batch]
     at_album_batch = [a[3] for a in at_batch]
+
+    st_goal_batch = [s[0] for s in st_batch]
+    st_song_batch = [s[1] for s in st_batch]
+    st_singer_batch = [s[2] for s in st_batch]
+    st_album_batch = [s[3] for s in st_batch]
     feed_dict = {
         dqn.state_goal: st_goal_batch,
         dqn.state_song: st_song_batch,

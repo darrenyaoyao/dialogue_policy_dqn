@@ -1,0 +1,4 @@
+model_checkpoint_path: "test_model-13000"
+all_model_checkpoint_paths: "test_model-11000"
+all_model_checkpoint_paths: "test_model-12000"
+all_model_checkpoint_paths: "test_model-13000"
