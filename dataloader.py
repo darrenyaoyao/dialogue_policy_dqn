@@ -72,7 +72,7 @@ class Dataloader():
                 state = self.getState(turn['Bot_state'])
                 action = self.getAction(turn['Bot_action'])
                 if index == len(conversations)-1:
-                    print(reward)
+                    #print(reward)
                     re = reward
                     next_state = (0, 0, 0, 0)
                     terminal = 1
