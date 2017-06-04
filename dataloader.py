@@ -28,14 +28,15 @@ class Dataloader():
         self.mapping = pickle.load(open('mapping.p', 'rb'))
         self.goal_size = len(self.mapping['goal'])
         self.action_size = len(self.mapping['action'])
-        self.song_size = len(self.mapping['song'])
-        self.singer_size = len(self.mapping['singer'])
-        self.album_size = len(self.mapping['album'])
+        self.inv_goal = {v: k for k, v in self.mapping['goal'].iteritems()}
+        self.inv_action = {v: k for k, v in self.mapping['action'].iteritems()}
+        self.inv_song = {v: k for k, v in self.mapping['song'].iteritems()}
+        self.inv_singer = {v: k for k, v in self.mapping['singer'].iteritems()}
+        self.inv_album = {v: k for k, v in self.mapping['album'].iteritems()}
         self.dataset = []
         self.val_set = []
         self.train_set = []
         self.makeSet()
-    #def chunk(self,l,n):
 
     def get_train_batch(self, batch_size):
         batch = []
@@ -58,11 +59,17 @@ class Dataloader():
         del state[-1]
         return tuple(state)
 
+    def mapState(self, state):
+        return (self.inv_goal[state[0]], self.inv_song[state[1]], self.inv_singer[state[2]], self.inv_album[state[3]])
+
     def getAction(self, bot_action):
         action = list(bot_action)
         del action[-1]
         del action[-1]
         return tuple(action)
+
+    def mapAction(self, action):
+        return (self.inv_action[action[0]], self.inv_song[action[1]], self.inv_singer[action[2]], self.inv_album[action[3]])
 
     def makeSet(self):
         for conversations in self.data:
@@ -72,7 +79,6 @@ class Dataloader():
                 state = self.getState(turn['Bot_state'])
                 action = self.getAction(turn['Bot_action'])
                 if index == len(conversations)-1:
-                    #print(reward)
                     re = reward
                     next_state = (0, 0, 0, 0)
                     terminal = 1
@@ -86,7 +92,6 @@ class Dataloader():
 
 if __name__ == "__main__":
     loader = Dataloader()
-    #loader.makeSet()
     print(loader.dataset[:10])
     print("len = ", len(loader.dataset))
     loader.Split(0.1)

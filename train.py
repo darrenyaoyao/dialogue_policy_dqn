@@ -2,6 +2,7 @@ import tensorflow as tf
 from copy import deepcopy
 from dataloader import Dataloader
 import datetime
+from random import randint
 from dqn import DQN
 from tensorflow import flags
 from tensorflow import logging
@@ -47,17 +48,13 @@ def train():
                 # saver.restore(sess, tf.train.latest_checkpoint(FLAGS.model_dir))
                 # print("restoring the model...")
             dqn = DQN(goal_size=dataloader.goal_size,
-                      act_size=dataloader.action_size,
-                      song_size=dataloader.song_size,
-                      singer_size=dataloader.singer_size,
-                      album_size=dataloader.album_size)
+                      act_size=dataloader.action_size)
             
 
             
             # check whether checkpoint exist if yes, load the checkpoint, if not
             # , initial the variables
             ckpt = tf.train.get_checkpoint_state(FLAGS.model_dir)
-            print(ckpt)
             if ckpt:
                 print("Reading ckpt model from %s" % ckpt.model_checkpoint_path)
                 dqn.saver.restore(sess, ckpt.model_checkpoint_path)
@@ -80,10 +77,12 @@ def train():
                            rt_batch, terminal_batch)
                 current_step = tf.train.global_step(sess, dqn.global_step)
                 if current_step % FLAGS.evaluate_every == 0:
-                    dev_target_q_batch, q_action = max_q(dev_at_batch, dev_st1_batch)
+                    dev_target_q_batch, dev_q_action_batch = max_q(dev_at_batch, dev_st1_batch)
                     dev_step(dev_st_batch, dev_at_batch, dev_target_q_batch,
                              dev_rt_batch, dev_terminal_batch)
-                    print("validate action {} ".format(q_action) )
+                    idx = randint(0, len(dev_st_batch))
+                    print("State: "+str(dataloader.mapState(dev_st1_batch[idx])))
+                    print("Action: "+str(dataloader.mapAction(dev_q_action_batch[idx])))
                 #saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=2)
                 if current_step % 1000 == 0:
                     #_, q_action = max_q()
@@ -128,20 +127,20 @@ def max_q(st_batch, st1_batch, action_size=9):
     at_album_batch = [a[3] for a in all_action]
     feed_dict = {
         dqn.state_goal: st_goal_batch,
-        dqn.state_song: st_song_batch,
-        dqn.state_singer: st_singer_batch,
-        dqn.state_album: st_album_batch,
+        dqn.state_song: trained_slot(st_song_batch),
+        dqn.state_singer: trained_slot(st_singer_batch),
+        dqn.state_album: trained_slot(st_album_batch),
         dqn.action_act: at_act_batch,
-        dqn.action_song: at_song_batch,
-        dqn.action_singer: at_singer_batch,
-        dqn.action_album: at_album_batch
+        dqn.action_song: trained_slot(at_song_batch),
+        dqn.action_singer: trained_slot(at_singer_batch),
+        dqn.action_album: trained_slot(at_album_batch)
     }
     q = sess.run(
         dqn.q,
         feed_dict
     )
     max_q = []
-    q_action = 0
+    max_action = []
     for i in range(0, len(q), 8*action_size):
         q_max = float('-inf')
         for j in range(8*action_size):
@@ -149,9 +148,11 @@ def max_q(st_batch, st1_batch, action_size=9):
                 q_max = q[i+j]
                 q_action = all_action[i+j]
         max_q.append(q_max)
-    return max_q, q_action
+        max_action.append(q_action)
+    return max_q, max_action
 def dev_step(st_batch, at_batch, target_q_batch,
                          rt_batch, terminal_batch):
+    print(target_q_batch[:10])
     st_goal_batch = [s[0] for s in st_batch]
     st_song_batch = [s[1] for s in st_batch]
     st_singer_batch = [s[2] for s in st_batch]
@@ -162,23 +163,23 @@ def dev_step(st_batch, at_batch, target_q_batch,
     at_album_batch = [a[3] for a in at_batch]
     feed_dict = {
         dqn.state_goal: st_goal_batch,
-        dqn.state_song: st_song_batch,
-        dqn.state_singer: st_singer_batch,
-        dqn.state_album: st_album_batch,
+        dqn.state_song: trained_slot(st_song_batch),
+        dqn.state_singer: trained_slot(st_singer_batch),
+        dqn.state_album: trained_slot(st_album_batch),
         dqn.action_act: at_act_batch,
-        dqn.action_song: at_song_batch,
-        dqn.action_singer: at_singer_batch,
-        dqn.action_album: at_album_batch,
+        dqn.action_song: trained_slot(at_song_batch),
+        dqn.action_singer: trained_slot(at_singer_batch),
+        dqn.action_album: trained_slot(at_album_batch),
         dqn.target_q: target_q_batch,
         dqn.reward: rt_batch,
         dqn.terminal: terminal_batch
     }
-    step, loss = sess.run(
-        [dqn.global_step, dqn.loss],
+    step, loss, q = sess.run(
+        [dqn.global_step, dqn.loss, dqn.q],
         feed_dict)
 
     time_str = datetime.datetime.now().isoformat()
-    print("{}: step {}, loss {:g}".format(time_str, step, loss))
+    print("Dev: {}: step {}, loss {:g}".format(time_str, step, loss))
 
 
 def train_step(st_batch, at_batch, target_q_batch,
@@ -194,24 +195,26 @@ def train_step(st_batch, at_batch, target_q_batch,
     st_album_batch = [s[3] for s in st_batch]
     feed_dict = {
         dqn.state_goal: st_goal_batch,
-        dqn.state_song: st_song_batch,
-        dqn.state_singer: st_singer_batch,
-        dqn.state_album: st_album_batch,
+        dqn.state_song: trained_slot(st_song_batch),
+        dqn.state_singer: trained_slot(st_singer_batch),
+        dqn.state_album: trained_slot(st_album_batch),
         dqn.action_act: at_act_batch,
-        dqn.action_song: at_song_batch,
-        dqn.action_singer: at_singer_batch,
-        dqn.action_album: at_album_batch,
+        dqn.action_song: trained_slot(at_song_batch),
+        dqn.action_singer: trained_slot(at_singer_batch),
+        dqn.action_album: trained_slot(at_album_batch),
         dqn.target_q: target_q_batch,
         dqn.reward: rt_batch,
         dqn.terminal: terminal_batch
     }
-    _, step, loss = sess.run(
+    _, step, loss= sess.run(
         [dqn.train_op, dqn.global_step, dqn.loss],
         feed_dict)
+    time_str = datetime.datetime.now().isoformat()
+    if step % 50 == 0:
+        print("Train: {}: step {}, loss {:g}".format(time_str, step, loss))
 
-
-
-
+def trained_slot(slots):
+    return [ 1 if s >= 1 else 0 for s in slots ]        
             
 
 
