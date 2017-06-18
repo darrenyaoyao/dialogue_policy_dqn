@@ -23,77 +23,124 @@ import random, math
 
 
 class Dataloader():
-    def __init__(self, filename='training_data_encode.npy'):
+    def __init__(self, filename='data.npy'):
         self.data = np.load(filename)
-        self.mapping = pickle.load(open('mapping.p', 'rb'))
-        self.goal_size = len(self.mapping['goal'])
-        self.action_size = len(self.mapping['action'])
-        self.song_size = len(self.mapping['song'])
-        self.singer_size = len(self.mapping['singer'])
-        self.album_size = len(self.mapping['album'])
-        self.dataset = []
-        self.val_set = []
-        self.train_set = []
-        self.makeSet()
-    #def chunk(self,l,n):
+        self.training_data = []
+        self.all_states = np.load('all_states.npy')
+        self.all_actions = np.load('all_actions.npy')
+        self.all_intents = np.load('all_intents.npy')
+        self.goal_size = len(self.all_states)
+        self.action_size = len(self.all_actions)
+        self.intent_size = len(self.all_intents)
+        self.states_dict = {}
+        self.actions_dict = {}
+        self.intents_dict = {}
+        for i in range(len(self.all_states)):
+            self.states_dict[self.all_states[i]] = i
+        for i in range(len(self.all_actions)):
+            self.actions_dict[self.all_actions[i]] = i
+        for i in range(len(self.all_intents)):
+            self.intents_dict[self.all_intents[i]] = i
+        self.inv_states_dict = {v: k for k, v in self.states_dict.iteritems()}
+        self.inv_actions_dict = {v: k for k, v in self.actions_dict.iteritems()}
+        self.inv_intents_dict = {v: k for k, v in self.intents_dict.iteritems()}
+        for d in self.data:
+            training_d = {}
+            training_d['rt'] = d['rt']
+            training_d['terminal'] = d['terminal']
+            training_d['at'] = self.actions_dict[d['at']]
+            # state
+            st = []
+            st.append(self.states_dict[d['st'][0]])
+            if d['st'][1][0]:
+                st.append([1])
+            else:
+                st.append([0])
+            if d['st'][2][0]:
+                st.append([1])
+            else:
+                st.append([0])
+            if d['st'][3][0]:
+                st.append([1])
+            else:
+                st.append([0])
+            training_d['st'] = st
+            # state1
+            st_1 = []
+            st_1.append(self.states_dict[d['st_1'][0]])
+            if d['st_1'][1][0][0]:
+                st_1.append([1])
+            else:
+                st_1.append([0])
+            if d['st_1'][2][0][0]:
+                st_1.append([1])
+            else:
+                st_1.append([0])
+            if d['st_1'][3][0][0]:
+                st_1.append([1])
+            else:
+                st_1.append([0])
+            training_d['st_1'] = st_1
+            # history
+            histories = []
+            for h in d['history']:
+                history = []
+                history.append(self.intents_dict[h[0]])
+                if h[1]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                if h[2]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                if h[3]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                histories.append(history)
+            if len(histories) >= 4:
+                training_d['history'] = histories[-4:]
+            else:
+                n = 4 - len(histories)
+                training_d['history'] = histories
+                for i in range(n):
+                    training_d['history'].append([self.intents_dict[''], [0], [0], [0]])
+            # history_1
+            histories = []
+            for h in d['history_1']:
+                history = []
+                history.append(self.intents_dict[h[0]])
+                if h[1]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                if h[2]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                if h[3]:
+                    history.append([1])
+                else:
+                    history.append([0])
+                histories.append(history)
+            if len(histories) >= 4:
+                training_d['history_1'] = histories[-4:]
+            else:
+                n = 4 - len(histories)
+                training_d['history_1'] = histories
+                for i in range(n):
+                    training_d['history_1'].append([self.intents_dict[''], [0], [0], [0]])
+            self.training_data.append(training_d)
+        self.val_data = self.training_data[:100]
+        self.training_data = self.training_data[100:]
 
     def get_train_batch(self, batch_size):
         batch = []
         for i in range(batch_size):
-            batch.append(random.choice(self.train_set))
+            batch.append(random.choice(self.training_data))
         return batch
-
-    def get_val(self):
-        return self.val_set
-
-    def split(self, ratio):
-        random.shuffle(self.dataset)
-        #print("math.floor = ", math.floor(ratio*len(self.dataset)))
-        self.val_set = self.dataset[:int(math.floor(ratio*len(self.dataset)))]
-        self.train_set = self.dataset[int(math.floor(ratio*len(self.dataset))):]
-
-    def getState(self, bot_state):
-        state = list(bot_state)
-        del state[-1]
-        del state[-1]
-        return tuple(state)
-
-    def getAction(self, bot_action):
-        action = list(bot_action)
-        del action[-1]
-        del action[-1]
-        return tuple(action)
-
-    def makeSet(self):
-        for conversations in self.data:
-            reward = copy.copy(conversations[-1])
-            del conversations[-1]
-            for index, turn in enumerate(conversations):
-                state = self.getState(turn['Bot_state'])
-                action = self.getAction(turn['Bot_action'])
-                if index == len(conversations)-1:
-                    print(reward)
-                    re = reward
-                    next_state = (0, 0, 0, 0)
-                    terminal = 1
-                else:
-                    re = 0
-                    next_state = self.getState(conversations[index+1]['Bot_state'])
-                    terminal = 0
-
-                self.dataset.append((state, action, next_state, re, terminal))
 
 
 if __name__ == "__main__":
-    loader = Dataloader()
-    #loader.makeSet()
-    print(loader.dataset[:10])
-    print("len = ", len(loader.dataset))
-    loader.Split(0.1)
-    print("get the bactch size = ",len(loader.get_train_batch(64)))
-    def check(data):
-        for d in data:
-            if type(d[0]) != tuple or type(d[1]) != tuple:
-                print("error!")
-
-
+    dataloader = Dataloader()

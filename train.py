@@ -14,13 +14,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def train():
     dataloader = Dataloader()
-    dataloader.split(0.1)
-    val_data = dataloader.get_val()
-    dev_st_batch = [d[0] for d in val_data]
-    dev_at_batch = [d[1] for d in val_data]
-    dev_st1_batch = [d[2] for d in val_data]
-    dev_rt_batch = [d[3] for d in val_data]
-    dev_terminal_batch = [d[4] for d in val_data]
+    val_data = dataloader.val_data
     with tf.Graph().as_default():
         sess = tf.Session(config=tf.ConfigProto(
             allow_soft_placement=True,
@@ -29,9 +23,7 @@ def train():
         with sess.as_default():
             dqn = DQN(goal_size=dataloader.goal_size,
                       act_size=dataloader.action_size,
-                      song_size=dataloader.song_size,
-                      singer_size=dataloader.singer_size,
-                      album_size=dataloader.album_size)
+                      intent_size=dataloader.intent_size)
 
             # Define Training Procedure
             global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -44,134 +36,164 @@ def train():
             sess.run(tf.global_variables_initializer())
 
             # predict the max Q of st1
-            def max_q(st_batch, st1_batch, action_size=9):
-                tmp = []
-                all_action = []
-                all_st1 = []
-                # generate all possible action
-                for s in st_batch:
-                    for i in range(8):
-                        a0 = list(deepcopy(s))
-                        idx_1 = i % 2
-                        idx_2 = (i / 2) % 2
-                        idx_3 = (i / 4) % 2
-                        if idx_1 == 0:
-                            a0[1] = 0
-                        if idx_2 == 0:
-                            a0[2] = 0
-                        if idx_3 == 0:
-                            a0[3] = 0
-                        tmp.append(tuple(a0))
-                for a in tmp:
-                    for i in range(action_size):
-                        a0 = list(deepcopy(a))
-                        a0[0] = i
-                        all_action.append(tuple(a0))
-                for s in st1_batch:
-                    for i in range(8*action_size):
-                        all_st1.append(s)
-                st_goal_batch = [s[0] for s in all_st1]
-                st_song_batch = [s[1] for s in all_st1]
-                st_singer_batch = [s[2] for s in all_st1]
-                st_album_batch = [s[3] for s in all_st1]
-                at_act_batch = [a[0] for a in all_action]
-                at_song_batch = [a[1] for a in all_action]
-                at_singer_batch = [a[2] for a in all_action]
-                at_album_batch = [a[3] for a in all_action]
+            def max_q(batch):
+                action_size = dataloader.action_size
+                st1_goal_batch = [d['st_1'][0] for d in batch for i in range(action_size)]
+                st1_song_batch = [d['st_1'][1] for d in batch for i in range(action_size)]
+                st1_singer_batch = [d['st_1'][2] for d in batch for i in range(action_size)]
+                st1_album_batch = [d['st_1'][3] for d in batch for i in range(action_size)]
+                history0_intent = [d['history_1'][0][0] for d in batch for i in range(action_size)]
+                history0_song = [d['history_1'][0][1] for d in batch for i in range(action_size)]
+                history0_singer = [d['history_1'][0][2] for d in batch for i in range(action_size)]
+                history0_album = [d['history_1'][0][3] for d in batch for i in range(action_size)]
+                history1_intent = [d['history_1'][1][0] for d in batch for i in range(action_size)]
+                history1_song = [d['history_1'][1][1] for d in batch for i in range(action_size)]
+                history1_singer = [d['history_1'][1][2] for d in batch for i in range(action_size)]
+                history1_album = [d['history_1'][1][3] for d in batch for i in range(action_size)]
+                history2_intent = [d['history_1'][2][0] for d in batch for i in range(action_size)]
+                history2_song = [d['history_1'][2][1] for d in batch for i in range(action_size)]
+                history2_singer = [d['history_1'][2][2] for d in batch for i in range(action_size)]
+                history2_album = [d['history_1'][2][3] for d in batch for i in range(action_size)]
+                history3_intent = [d['history_1'][3][0] for d in batch for i in range(action_size)]
+                history3_song = [d['history_1'][3][1] for d in batch for i in range(action_size)]
+                history3_singer = [d['history_1'][3][2] for d in batch for i in range(action_size)]
+                history3_album = [d['history_1'][3][3] for d in batch for i in range(action_size)]
+                at_batch = [j for i in range(len(batch)) for j in range(action_size)]
                 feed_dict = {
-                    dqn.state_goal: st_goal_batch,
-                    dqn.state_song: st_song_batch,
-                    dqn.state_singer: st_singer_batch,
-                    dqn.state_album: st_album_batch,
-                    dqn.action_act: at_act_batch,
-                    dqn.action_song: at_song_batch,
-                    dqn.action_singer: at_singer_batch,
-                    dqn.action_album: at_album_batch
+                    dqn.state_goal: st1_goal_batch,
+                    dqn.state_song: st1_song_batch,
+                    dqn.state_singer: st1_singer_batch,
+                    dqn.state_album: st1_album_batch,
+                    dqn.action: at_batch,
+                    dqn.history_intent[0]: history0_intent,
+                    dqn.history_intent[1]: history1_intent,
+                    dqn.history_intent[2]: history2_intent,
+                    dqn.history_intent[3]: history3_intent,
+                    dqn.history_song[0]: history0_song,
+                    dqn.history_song[1]: history1_song,
+                    dqn.history_song[2]: history2_song,
+                    dqn.history_song[3]: history3_song,
+                    dqn.history_singer[0]: history0_singer,
+                    dqn.history_singer[1]: history1_singer,
+                    dqn.history_singer[2]: history2_singer,
+                    dqn.history_singer[3]: history3_singer,
+                    dqn.history_album[0]: history0_album,
+                    dqn.history_album[1]: history1_album,
+                    dqn.history_album[2]: history2_album,
+                    dqn.history_album[3]: history3_album,
                 }
                 q = sess.run(
                     dqn.q,
                     feed_dict
                 )
                 max_q = []
-                for i in range(0, len(q), 8*action_size):
+                q_actions = []
+
+                def valid(i, j):
+                    num = i + j
+                    if j in [0, 5, 6, 8, 11]:
+                        return True
+                    elif j in [1, 2, 3, 9, 10] and st1_singer_batch[num] == 0:
+                        return False
+                    elif j in [3, 4, 7, 10, 13] and st1_song_batch[num] == 0:
+                        return False
+                    elif j in [9, 12] and st1_album_batch[num] == 0:
+                        return False
+                    else:
+                        return True
+
+                for i in range(0, len(q), action_size):
                     q_max = float('-inf')
-                    for j in range(8*action_size):
-                        if q[i+j] > q_max:
+                    q_action = 0
+                    for j in range(action_size):
+                        if q[i+j] > q_max and valid(i, j):
                             q_max = q[i+j]
+                            q_action = j
                     max_q.append(q_max)
-                return max_q
+                    q_actions.append(q_action)
+                return max_q, q_actions
 
-            def train_step(st_batch, at_batch, target_q_batch,
-                           rt_batch, terminal_batch):
-                st_goal_batch = [s[0] for s in st_batch]
-                st_song_batch = [s[1] for s in st_batch]
-                st_singer_batch = [s[2] for s in st_batch]
-                st_album_batch = [s[3] for s in st_batch]
-                at_act_batch = [a[0] for a in at_batch]
-                at_song_batch = [a[1] for a in at_batch]
-                at_singer_batch = [a[2] for a in at_batch]
-                at_album_batch = [a[3] for a in at_batch]
-                feed_dict = {
-                    dqn.state_goal: st_goal_batch,
-                    dqn.state_song: st_song_batch,
-                    dqn.state_singer: st_singer_batch,
-                    dqn.state_album: st_album_batch,
-                    dqn.action_act: at_act_batch,
-                    dqn.action_song: at_song_batch,
-                    dqn.action_singer: at_singer_batch,
-                    dqn.action_album: at_album_batch,
-                    dqn.target_q: target_q_batch,
-                    dqn.reward: rt_batch,
-                    dqn.terminal: terminal_batch
-                }
-                _, step, loss = sess.run(
-                    [train_op, global_step, dqn.loss],
+            def train_step(batch, target_q):
+                feed_dict = batch_form(batch, target_q)
+                _, step, loss, q = sess.run(
+                    [train_op, global_step, dqn.loss, dqn.q],
                     feed_dict)
+                '''
+                print("Target")
+                print(target_q)
+                print("Q")
+                print(q)
+                '''
 
-            def dev_step(st_batch, at_batch, target_q_batch,
-                         rt_batch, terminal_batch):
-                st_goal_batch = [s[0] for s in st_batch]
-                st_song_batch = [s[1] for s in st_batch]
-                st_singer_batch = [s[2] for s in st_batch]
-                st_album_batch = [s[3] for s in st_batch]
-                at_act_batch = [a[0] for a in at_batch]
-                at_song_batch = [a[1] for a in at_batch]
-                at_singer_batch = [a[2] for a in at_batch]
-                at_album_batch = [a[3] for a in at_batch]
-                feed_dict = {
-                    dqn.state_goal: st_goal_batch,
-                    dqn.state_song: st_song_batch,
-                    dqn.state_singer: st_singer_batch,
-                    dqn.state_album: st_album_batch,
-                    dqn.action_act: at_act_batch,
-                    dqn.action_song: at_song_batch,
-                    dqn.action_singer: at_singer_batch,
-                    dqn.action_album: at_album_batch,
-                    dqn.target_q: target_q_batch,
-                    dqn.reward: rt_batch,
-                    dqn.terminal: terminal_batch
-                }
+            def dev_step(batch, target_q):
+                feed_dict = batch_form(batch, target_q)
                 step, loss = sess.run(
                     [global_step, dqn.loss],
                     feed_dict)
                 time_str = datetime.datetime.now().isoformat()
                 print("{}: step {}, loss {:g}".format(time_str, step, loss))
 
+            def batch_form(batch, target_q):
+                st_goal_batch = [d['st'][0] for d in batch]
+                st_song_batch = [d['st'][1] for d in batch]
+                st_singer_batch = [d['st'][2] for d in batch]
+                st_album_batch = [d['st'][3] for d in batch]
+                at_batch = [d['at'] for d in batch]
+                rt_batch = [d['rt'] for d in batch]
+                terminal_batch = [d['terminal'] for d in batch]
+                history0_intent = [d['history'][0][0] for d in batch]
+                history0_song = [d['history'][0][1] for d in batch]
+                history0_singer = [d['history'][0][2] for d in batch]
+                history0_album = [d['history'][0][3] for d in batch]
+                history1_intent = [d['history'][1][0] for d in batch]
+                history1_song = [d['history'][1][1] for d in batch]
+                history1_singer = [d['history'][1][2] for d in batch]
+                history1_album = [d['history'][1][3] for d in batch]
+                history2_intent = [d['history'][2][0] for d in batch]
+                history2_song = [d['history'][2][1] for d in batch]
+                history2_singer = [d['history'][2][2] for d in batch]
+                history2_album = [d['history'][2][3] for d in batch]
+                history3_intent = [d['history'][3][0] for d in batch]
+                history3_song = [d['history'][3][1] for d in batch]
+                history3_singer = [d['history'][3][2] for d in batch]
+                history3_album = [d['history'][3][3] for d in batch]
+                return {
+                    dqn.state_goal: st_goal_batch,
+                    dqn.state_song: st_song_batch,
+                    dqn.state_singer: st_singer_batch,
+                    dqn.state_album: st_album_batch,
+                    dqn.action: at_batch,
+                    dqn.reward: rt_batch,
+                    dqn.terminal: terminal_batch,
+                    dqn.history_intent[0]: history0_intent,
+                    dqn.history_intent[1]: history1_intent,
+                    dqn.history_intent[2]: history2_intent,
+                    dqn.history_intent[3]: history3_intent,
+                    dqn.history_song[0]: history0_song,
+                    dqn.history_song[1]: history1_song,
+                    dqn.history_song[2]: history2_song,
+                    dqn.history_song[3]: history3_song,
+                    dqn.history_singer[0]: history0_singer,
+                    dqn.history_singer[1]: history1_singer,
+                    dqn.history_singer[2]: history2_singer,
+                    dqn.history_singer[3]: history3_singer,
+                    dqn.history_album[0]: history0_album,
+                    dqn.history_album[1]: history1_album,
+                    dqn.history_album[2]: history2_album,
+                    dqn.history_album[3]: history3_album,
+                    dqn.target_q: target_q
+                }
+
             while True:
                 train_batch = dataloader.get_train_batch(FLAGS.batch_size)
-                st_batch = [d[0] for d in train_batch]
-                at_batch = [d[1] for d in train_batch]
-                st1_batch = [d[2] for d in train_batch]
-                rt_batch = [d[3] for d in train_batch]
-                terminal_batch = [d[4] for d in train_batch]
-                target_q_batch = max_q(st_batch, st1_batch)
-                train_step(st_batch, at_batch, target_q_batch,
-                           rt_batch, terminal_batch)
+                train_target_q_batch, q_actions_batch = max_q(train_batch)
+                train_step(train_batch, train_target_q_batch)
                 current_step = tf.train.global_step(sess, global_step)
                 if current_step % FLAGS.evaluate_every == 0:
-                    dev_target_q_batch = max_q(dev_at_batch, dev_st1_batch)
-                    dev_step(dev_st_batch, dev_at_batch, dev_target_q_batch,
-                             dev_rt_batch, dev_terminal_batch)
+                    dev_target_q_batch, dev_q_actions_batch = max_q(val_data)
+                    #print(val_data[:10])
+                    #print(dev_q_actions_batch[:10])
+                    dev_step(val_data, dev_target_q_batch)
 
 
 def main(_):
