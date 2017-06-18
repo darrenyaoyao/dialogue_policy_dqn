@@ -141,6 +141,138 @@ class Dataloader():
             batch.append(random.choice(self.training_data))
         return batch
 
+    def generate_data(self, historys, state):
+        training_d = {}
+        histories = []
+        for h in historys:
+            history = []
+            history.append(self.intents_dict[h[0]])
+            if h[1]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[2]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[3]:
+                history.append([1])
+            else:
+                history.append([0])
+            histories.append(history)
+        if len(histories) >= 4:
+            training_d['history_1'] = histories[-4:]
+        else:
+            n = 4 - len(histories)
+            training_d['history_1'] = histories
+            for i in range(n):
+                training_d['history_1'].append([self.intents_dict[''], [0], [0], [0]])
+        st = []
+        st.append(self.states_dict[state[0]])
+        if state[1][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        if state[2][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        if state[3][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        training_d['st'] = st
+        return training_d
+
+    def save_data(self, h0, s0, h1, s1, a, r, t):
+        training_d = {}
+        training_d['rt'] = r
+        training_d['terminal'] = t
+        training_d['at'] = self.actions_dict[a]
+        # state
+        st = []
+        st.append(self.states_dict[s0[0]])
+        if s0[1][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        if s0[2][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        if s0[3][0]:
+            st.append([1])
+        else:
+            st.append([0])
+        training_d['st'] = st
+        # state1
+        st_1 = []
+        st_1.append(self.states_dict[s1[0]])
+        if s1[1][0][0]:
+            st_1.append([1])
+        else:
+            st_1.append([0])
+        if s1[2][0][0]:
+            st_1.append([1])
+        else:
+            st_1.append([0])
+        if s1[3][0][0]:
+            st_1.append([1])
+        else:
+            st_1.append([0])
+        training_d['st_1'] = st_1
+        # history
+        histories = []
+        for h in h0:
+            history = []
+            history.append(self.intents_dict[h[0]])
+            if h[1]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[2]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[3]:
+                history.append([1])
+            else:
+                history.append([0])
+            histories.append(history)
+        if len(histories) >= 4:
+            training_d['history'] = histories[-4:]
+        else:
+            n = 4 - len(histories)
+            training_d['history'] = histories
+            for i in range(n):
+                training_d['history'].append([self.intents_dict[''], [0], [0], [0]])
+        # history_1
+        histories = []
+        for h in h1:
+            history = []
+            history.append(self.intents_dict[h[0]])
+            if h[1]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[2]:
+                history.append([1])
+            else:
+                history.append([0])
+            if h[3]:
+                history.append([1])
+            else:
+                history.append([0])
+            histories.append(history)
+        if len(histories) >= 4:
+            training_d['history_1'] = histories[-4:]
+        else:
+            n = 4 - len(histories)
+            training_d['history_1'] = histories
+            for i in range(n):
+                training_d['history_1'].append([self.intents_dict[''], [0], [0], [0]])
+        self.training_data.append(training_d)
+
 
 if __name__ == "__main__":
     dataloader = Dataloader()
